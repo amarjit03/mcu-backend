@@ -1,12 +1,38 @@
-/.env
-/DEPLOYMENT.md
-/venv
-/node_modules
-/__pycache__
-*.pyc
-*.pyo
-*.egg-info
-/dist
-/build
+# Environment
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking
+.mypy_cache/
+.ruff_cache/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
-.pytest_cache
+Thumbs.db
+
+# Node
+node_modules/
