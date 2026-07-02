@@ -85,6 +85,79 @@ Populate the database with default departments, categories, and test user accoun
 uv run python -m app.db.seed
 ```
 
+---
+
+## 🔑 MVP Test Credentials
+
+Once the seeding script completes, the following pre-configured test users are available in the database (all share the password `password123`):
+
+| Role | Email | Permissions / Workflow Role |
+| :--- | :--- | :--- |
+| **Super Admin** | `superadmin@admin.com` | Global override, system control |
+| **Admin** | `admin@admin.com` | Create departments, categories, manage users, view analytics |
+| **Department Head** | `hostelhead@admin.com` | Dashboard review, assign staff, escalate priority |
+| **Staff Member** | `hostelstaff@admin.com` | Accept complaints, add internal notes, post resolutions |
+| **Student** | `student@student.com` | Submit complaints, upload files, chat, reopen, submit ratings |
+
+---
+
+## 🔄 End-to-End MVP Testing Workflow
+
+Follow this standard flow to verify the application via Swagger UI ([http://localhost:8000/docs](http://localhost:8000/docs)):
+
+### Step 1: Authentication & Token Authorization
+1. Go to the Swagger UI page.
+2. Click the green **Authorize** button in the top right.
+3. Enter `student@student.com` as the username and `password123` as the password, then click **Authorize**.
+4. Alternatively, use the `POST /api/v1/auth/login` endpoint to obtain a token and pass it in the `Authorization: Bearer <token>` header of your API requests.
+
+### Step 2: Student Submits a Complaint
+1. Go to the `POST /api/v1/student/complaints` endpoint.
+2. Submit a request body like:
+   ```json
+   {
+     "title": "Wi-Fi not working in room 302",
+     "description": "The campus Wi-Fi has been dropping connection frequently since yesterday.",
+     "category_id": 1,
+     "department_id": 1,
+     "priority": "MEDIUM",
+     "anonymous": false
+   }
+   ```
+3. Copy the returned complaint `id` (e.g. `1`) and the generated ticket number (e.g. `COMP-YYYYMMDD-0001`).
+
+### Step 3: Department Head Assigns Staff
+1. Re-authorize Swagger using the Department Head credentials:
+   - Username: `hostelhead@admin.com`
+   - Password: `password123`
+2. Go to the `POST /api/v1/department/assign` endpoint.
+3. Query the `complaint_id` with `1` and set the body `staff_id` to `4` (the hostel staff member id).
+
+### Step 4: Staff Resolves the Complaint
+1. Re-authorize Swagger using the Staff credentials:
+   - Username: `hostelstaff@admin.com`
+   - Password: `password123`
+2. Go to the `POST /api/v1/staff/complaints/1/accept` endpoint to mark the status as `IN_PROGRESS`.
+3. Go to the `POST /api/v1/staff/complaints/1/resolve` endpoint. Send a resolution comment:
+   ```json
+   {
+     "message": "Replaced the network router on the 3rd floor. The connection is stable now."
+   }
+   ```
+
+### Step 5: Student Submits Feedback & Closes Complaint
+1. Re-authorize Swagger using the Student credentials:
+   - Username: `student@student.com`
+   - Password: `password123`
+2. Go to the `POST /api/v1/student/complaints/1/feedback` endpoint. Submit a rating:
+   ```json
+   {
+     "rating": 5,
+     "comment": "Thank you for the quick resolution!"
+   }
+   ```
+3. Verify that the complaint status is now automatically updated to `CLOSED`.
+
 ### 6. Run the Application
 
 Start the local Uvicorn development server:
