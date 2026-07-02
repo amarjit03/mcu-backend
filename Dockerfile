@@ -32,7 +32,7 @@ COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 # Expose server port
-EXPOSE 8000
+EXPOSE 8080
 
 # Execute entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
