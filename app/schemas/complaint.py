@@ -1,18 +1,21 @@
 from datetime import datetime
+
 from pydantic import BaseModel, Field
+
 from app.models.complaint import ComplaintPriority, ComplaintStatus
+
 
 class ComplaintCategorySimpleOut(BaseModel):
     id: int
     name: str
-    
+
     class Config:
         from_attributes = True
 
 class DepartmentSimpleOut(BaseModel):
     id: int
     name: str
-    
+
     class Config:
         from_attributes = True
 
@@ -21,7 +24,7 @@ class UserSimpleOut(BaseModel):
     name: str
     email: str
     role: str
-    
+
     class Config:
         from_attributes = True
 
@@ -31,7 +34,7 @@ class ComplaintFileOut(BaseModel):
     file_path: str
     uploaded_by: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -125,7 +128,7 @@ class ComplaintOut(BaseModel):
 
     class Config:
         from_attributes = True
-        
+
 class ComplaintDetailOut(ComplaintOut):
     comments: list[ComplaintCommentOut] = []
     history: list[ComplaintHistoryOut] = []

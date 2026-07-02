@@ -1,15 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.api.v1 import auth, student, staff, head, admin, search, files, reports
+
+from app.api.v1 import admin, auth, files, head, reports, search, staff, student
+from app.core.config import settings
+from app.core.logging import setup_logging
+
+# Setup structured JSON logging
+setup_logging(debug=settings.DEBUG)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Backend API for Student Complaint Management System MVP",
+    description="Production-Ready backend API for Student Complaint Management System",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
 )
+
 
 # Set up CORS middleware
 app.add_middleware(
@@ -57,9 +63,17 @@ app.include_router(reports.router, prefix="/api/v1/reports", tags=["Export Repor
 app.include_router(reports.router, prefix="/reports", tags=["Export Reports"])
 
 @app.get("/", tags=["Root"])
-def root_status():
+def root_status() -> dict[str, str]:
     return {
         "status": "online",
         "project": settings.PROJECT_NAME,
         "documentation": "/docs"
     }
+
+@app.get("/health", tags=["Monitoring"])
+def health_check() -> dict[str, str]:
+    return {
+        "status": "healthy",
+        "version": "1.0.0"
+    }
+

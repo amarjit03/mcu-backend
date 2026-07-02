@@ -1,18 +1,20 @@
 import csv
-import io
 import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+import io
+
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models.user import User, UserRole
-from app.models.complaint import Complaint
-from app.api import deps
 from openpyxl import Workbook
-from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from sqlalchemy.orm import Session
+
+from app.api import deps
+from app.database import get_db
+from app.models.complaint import Complaint
+from app.models.user import User, UserRole
 
 router = APIRouter()
 
@@ -34,24 +36,24 @@ def export_csv(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     complaints = get_report_complaints(db, current_user)
-    
+
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
     # Header
     writer.writerow([
-        "Ticket Number", "Title", "Description", "Student Name", 
-        "Department", "Category", "Priority", "Status", 
-        "Anonymous", "Feedback Rating", "Feedback Comment", 
+        "Ticket Number", "Title", "Description", "Student Name",
+        "Department", "Category", "Priority", "Status",
+        "Anonymous", "Feedback Rating", "Feedback Comment",
         "Created At", "Closed At"
     ])
-    
+
     for c in complaints:
         # Mask student details if anonymous and requester is not Admin/SuperAdmin
         student_name = c.student.name if c.student else "Unknown"
         if c.anonymous and current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
             student_name = "Anonymous Student"
-            
+
         writer.writerow([
             c.ticket_number,
             c.title,
@@ -67,9 +69,9 @@ def export_csv(
             c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             c.closed_at.strftime("%Y-%m-%d %H:%M:%S") if c.closed_at else "N/A"
         ])
-        
+
     output.seek(0)
-    
+
     filename = f"complaints_report_{datetime.date.today().strftime('%Y%m%d')}.csv"
     headers = {"Content-Disposition": f"attachment; filename={filename}"}
     return StreamingResponse(output, media_type="text/csv", headers=headers)
@@ -82,26 +84,26 @@ def export_excel(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     complaints = get_report_complaints(db, current_user)
-    
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Complaints Report"
-    
+
     # Header row
     headers = [
-        "Ticket Number", "Title", "Description", "Student Name", 
-        "Department", "Category", "Priority", "Status", 
-        "Anonymous", "Feedback Rating", "Feedback Comment", 
+        "Ticket Number", "Title", "Description", "Student Name",
+        "Department", "Category", "Priority", "Status",
+        "Anonymous", "Feedback Rating", "Feedback Comment",
         "Created At", "Closed At"
     ]
     ws.append(headers)
-    
+
     # Body rows
     for c in complaints:
         student_name = c.student.name if c.student else "Unknown"
         if c.anonymous and current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
             student_name = "Anonymous Student"
-            
+
         ws.append([
             c.ticket_number,
             c.title,
@@ -117,17 +119,17 @@ def export_excel(
             c.created_at.strftime("%Y-%m-%d %H:%M:%S") if c.created_at else "",
             c.closed_at.strftime("%Y-%m-%d %H:%M:%S") if c.closed_at else "N/A"
         ])
-        
+
     # Write to memory buffer
     file_stream = io.BytesIO()
     wb.save(file_stream)
     file_stream.seek(0)
-    
+
     filename = f"complaints_report_{datetime.date.today().strftime('%Y%m%d')}.xlsx"
     res_headers = {"Content-Disposition": f"attachment; filename={filename}"}
     return StreamingResponse(
-        file_stream, 
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+        file_stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=res_headers
     )
 
@@ -139,17 +141,17 @@ def export_pdf(
     current_user: User = Depends(deps.get_current_active_user)
 ):
     complaints = get_report_complaints(db, current_user)
-    
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, 
-        pagesize=letter, 
-        rightMargin=30, 
-        leftMargin=30, 
-        topMargin=30, 
+        buffer,
+        pagesize=letter,
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=30,
         bottomMargin=30
     )
-    
+
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         'ReportTitle',
@@ -164,15 +166,15 @@ def export_pdf(
         textColor=colors.white,
         fontName='Helvetica-Bold'
     )
-    
+
     elements = []
-    
+
     # Document Title
     elements.append(Paragraph("Student Complaint Management System - Reports", title_style))
     elements.append(Paragraph(f"Generated On: {datetime.date.today().strftime('%Y-%m-%d')}", normal_style))
     elements.append(Paragraph(f"Generated By: {current_user.name} ({current_user.role})", normal_style))
     elements.append(Spacer(1, 20))
-    
+
     # Table headers & widths
     table_data = [[
         Paragraph("Ticket #", header_style),
@@ -182,7 +184,7 @@ def export_pdf(
         Paragraph("Status", header_style),
         Paragraph("Created At", header_style)
     ]]
-    
+
     # Limit to 50 entries in PDF to prevent buffer blowout on large datasets
     for c in complaints[:50]:
         dept_cat_text = f"{c.department.name[:12] if c.department else 'N/A'}\n/ {c.category.name[:12] if c.category else 'N/A'}"
@@ -194,7 +196,7 @@ def export_pdf(
             Paragraph(c.status, normal_style),
             Paragraph(c.created_at.strftime("%Y-%m-%d"), normal_style)
         ])
-        
+
     # Build Table
     # Col widths: Ticket, Title, Dept/Cat, Priority, Status, Created At
     col_widths = [110, 140, 120, 55, 65, 60]
@@ -209,12 +211,12 @@ def export_pdf(
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F7FAFC')]),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
     ]))
-    
+
     elements.append(t)
     doc.build(elements)
-    
+
     buffer.seek(0)
-    
+
     filename = f"complaints_report_{datetime.date.today().strftime('%Y%m%d')}.pdf"
     res_headers = {"Content-Disposition": f"attachment; filename={filename}"}
     return StreamingResponse(buffer, media_type="application/pdf", headers=res_headers)

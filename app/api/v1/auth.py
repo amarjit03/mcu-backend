@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+
+from app.api import deps
+from app.core.config import settings
 from app.database import get_db
-from app.schemas.auth import Token, LoginRequest, RefreshRequest
+from app.models.user import User
+from app.schemas.auth import LoginRequest, RefreshRequest, Token
 from app.schemas.user import UserOut
 from app.services.auth import AuthService
-from app.api import deps
-from app.models.user import User
-from app.config import settings
 
 router = APIRouter()
 
@@ -70,11 +71,11 @@ def refresh_token(
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-        
+
     user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None or not user.is_active:
         raise credentials_exception
-        
+
     return AuthService.create_user_tokens(user.id, user.role)
 
 @router.post("/logout")

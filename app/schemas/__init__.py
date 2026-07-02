@@ -1,25 +1,25 @@
-from app.schemas.auth import Token, TokenPayload, LoginRequest, RefreshRequest
-from app.schemas.user import UserCreate, UserUpdate, UserOut, UserUpdateMe
-from app.schemas.department import (
-    DepartmentCreate,
-    DepartmentUpdate,
-    DepartmentOut,
-    ComplaintCategoryCreate,
-    ComplaintCategoryUpdate,
-    ComplaintCategoryOut,
-)
+from app.schemas.analytics import AdminDashboard, DepartmentDashboard, StudentDashboard
+from app.schemas.auth import LoginRequest, RefreshRequest, Token, TokenPayload
 from app.schemas.complaint import (
-    ComplaintCreate,
-    ComplaintUpdate,
-    ComplaintOut,
-    ComplaintDetailOut,
-    ComplaintCommentCreate,
-    ComplaintCommentOut,
-    ComplaintFileOut,
     ComplaintAssignmentCreate,
     ComplaintAssignmentOut,
-    ComplaintHistoryOut,
+    ComplaintCommentCreate,
+    ComplaintCommentOut,
+    ComplaintCreate,
+    ComplaintDetailOut,
     ComplaintFeedbackCreate,
+    ComplaintFileOut,
+    ComplaintHistoryOut,
+    ComplaintOut,
     ComplaintStatusUpdate,
+    ComplaintUpdate,
 )
-from app.schemas.analytics import StudentDashboard, DepartmentDashboard, AdminDashboard
+from app.schemas.department import (
+    ComplaintCategoryCreate,
+    ComplaintCategoryOut,
+    ComplaintCategoryUpdate,
+    DepartmentCreate,
+    DepartmentOut,
+    DepartmentUpdate,
+)
+from app.schemas.user import UserCreate, UserOut, UserUpdate, UserUpdateMe

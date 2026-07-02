@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class ComplaintCategoryBase(BaseModel):
     name: str
     department_id: int

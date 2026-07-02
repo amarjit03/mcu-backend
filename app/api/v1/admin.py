@@ -1,18 +1,22 @@
-import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
-from app.database import get_db
-from app.models import User, UserRole, Department, ComplaintCategory, Complaint, ComplaintStatus, ComplaintPriority, ComplaintHistory
-from app.schemas.user import UserCreate, UserUpdate, UserOut
-from app.schemas.department import (
-    DepartmentCreate, DepartmentUpdate, DepartmentOut,
-    ComplaintCategoryCreate, ComplaintCategoryUpdate, ComplaintCategoryOut
-)
-from app.schemas.complaint import ComplaintOut, ComplaintDetailOut, ComplaintUpdate
-from app.schemas.analytics import AdminDashboard, DepartmentPerformance, CategoryBreakdown, MonthlyTrend
+
 from app.api import deps
 from app.core import security
+from app.database import get_db
+from app.models import Complaint, ComplaintCategory, ComplaintStatus, Department, User, UserRole
+from app.schemas.analytics import AdminDashboard, CategoryBreakdown, DepartmentPerformance, MonthlyTrend
+from app.schemas.complaint import ComplaintDetailOut, ComplaintOut, ComplaintUpdate
+from app.schemas.department import (
+    ComplaintCategoryCreate,
+    ComplaintCategoryOut,
+    ComplaintCategoryUpdate,
+    DepartmentCreate,
+    DepartmentOut,
+    DepartmentUpdate,
+)
+from app.schemas.user import UserCreate, UserOut, UserUpdate
 
 router = APIRouter()
 
@@ -110,7 +114,7 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == user_in.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email is already in use")
-        
+
     # Validate department_id if role is STAFF or HEAD
     if user_in.role in [UserRole.STAFF, UserRole.HEAD]:
         if not user_in.department_id:
@@ -118,7 +122,7 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
         dept = db.query(Department).filter(Department.id == user_in.department_id).first()
         if not dept:
             raise HTTPException(status_code=400, detail="Department not found")
-            
+
     db_user = User(
         name=user_in.name,
         email=user_in.email,
@@ -138,7 +142,7 @@ def update_user(id: int, user_data: UserUpdate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     for key, value in user_data.model_dump(exclude_unset=True).items():
         if key == "password":
             if len(value) < 6:
@@ -146,7 +150,7 @@ def update_user(id: int, user_data: UserUpdate, db: Session = Depends(get_db)):
             db_user.password_hash = security.get_password_hash(value)
         else:
             setattr(db_user, key, value)
-            
+
     db.commit()
     db.refresh(db_user)
     return db_user
@@ -179,11 +183,11 @@ def admin_update_complaint(id: int, complaint_data: ComplaintUpdate, db: Session
     complaint = db.query(Complaint).filter(Complaint.id == id).first()
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found")
-        
+
     # Update fields
     for field, value in complaint_data.model_dump(exclude_unset=True).items():
         setattr(complaint, field, value)
-        
+
     db.commit()
     db.refresh(complaint)
     return complaint
@@ -205,7 +209,7 @@ def admin_dashboard_metrics(db: Session = Depends(get_db)):
     total_complaints = db.query(func.count(Complaint.id)).scalar() or 0
     resolved = db.query(func.count(Complaint.id)).filter(Complaint.status == ComplaintStatus.RESOLVED).scalar() or 0
     closed = db.query(func.count(Complaint.id)).filter(Complaint.status == ComplaintStatus.CLOSED).scalar() or 0
-    
+
     pending = db.query(func.count(Complaint.id)).filter(
         Complaint.status.in_([
             ComplaintStatus.NEW,
@@ -215,7 +219,7 @@ def admin_dashboard_metrics(db: Session = Depends(get_db)):
             ComplaintStatus.REOPENED
         ])
     ).scalar() or 0
-    
+
     # Department Performance
     dept_performance = []
     departments = db.query(Department).all()
@@ -227,7 +231,7 @@ def admin_dashboard_metrics(db: Session = Depends(get_db)):
         ).scalar() or 0
         d_pending = d_total - d_resolved
         rate = (d_resolved / d_total * 100.0) if d_total > 0 else 0.0
-        
+
         dept_performance.append(DepartmentPerformance(
             department_name=d.name,
             total=d_total,
@@ -235,7 +239,7 @@ def admin_dashboard_metrics(db: Session = Depends(get_db)):
             pending=d_pending,
             resolution_rate=round(rate, 2)
         ))
-        
+
     # Category Breakdown
     cat_breakdown = []
     categories = db.query(ComplaintCategory).all()
@@ -243,7 +247,7 @@ def admin_dashboard_metrics(db: Session = Depends(get_db)):
         c_count = db.query(func.count(Complaint.id)).filter(Complaint.category_id == c.id).scalar() or 0
         if c_count > 0:
             cat_breakdown.append(CategoryBreakdown(category_name=c.name, count=c_count))
-            
+
     # Monthly Trend (Last 6 months)
     monthly_trend = []
     # In SQLite, we can group by strftime. In Postgres, date_trunc. Let's make a cross-db approach or format standard.
@@ -253,11 +257,11 @@ def admin_dashboard_metrics(db: Session = Depends(get_db)):
     for c in complaints:
         m_str = c.created_at.strftime("%Y-%m")
         months[m_str] = months.get(m_str, 0) + 1
-        
+
     sorted_months = sorted(months.keys(), reverse=True)[:6]
     for m in sorted_months:
         monthly_trend.append(MonthlyTrend(month=m, count=months[m]))
-        
+
     return AdminDashboard(
         total_users=total_users,
         total_complaints=total_complaints,
@@ -279,23 +283,23 @@ def admin_detailed_analytics(db: Session = Depends(get_db)):
             Complaint.status.in_([ComplaintStatus.RESOLVED, ComplaintStatus.CLOSED]),
             Complaint.closed_at.isnot(None)
         ).all()
-        
+
         total_hours = 0
         count = len(closed)
         for c in closed:
             delta = c.closed_at - c.created_at
             total_hours += delta.total_seconds() / 3600.0
         avg_times[d.name] = round(total_hours / count, 2) if count > 0 else 0.0
-        
+
     # Priority Breakdown
     priority_counts = db.query(
         Complaint.priority,
         func.count(Complaint.id)
     ).group_by(Complaint.priority).all()
-    
+
     # Satisfaction Rating (Average feedback rating)
     avg_rating = db.query(func.avg(Complaint.feedback_rating)).filter(Complaint.feedback_rating.isnot(None)).scalar()
-    
+
     return {
         "average_resolution_hours_by_department": avg_times,
         "priority_breakdown": {row[0]: row[1] for row in priority_counts},
@@ -316,7 +320,7 @@ def admin_monthly_report(db: Session = Depends(get_db)):
             report[m_str]["resolved"] += 1
         else:
             report[m_str]["pending"] += 1
-            
+
     return report
 
 @router.get("/category-report", dependencies=[dependency_admin])

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class StudentDashboard(BaseModel):
     total_complaints: int
     pending_complaints: int

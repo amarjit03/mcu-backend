@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session
-from app.models.user import User
+
 from app.core import security
+from app.models.user import User
 from app.schemas.auth import Token
+
 
 class AuthService:
     @staticmethod

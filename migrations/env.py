@@ -9,7 +9,7 @@ from alembic import context
 # Add project root to sys.path to enable app package imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.config import settings
+from app.core.config import settings
 from app.models.base import Base
 
 # this is the Alembic Config object, which provides

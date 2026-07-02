@@ -1,16 +1,19 @@
 import enum
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, DateTime
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from app.database import Base
 
-class ComplaintPriority(str, enum.Enum):
+
+class ComplaintPriority(enum.StrEnum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     URGENT = "URGENT"
 
-class ComplaintStatus(str, enum.Enum):
+class ComplaintStatus(enum.StrEnum):
     NEW = "NEW"
     ASSIGNED = "ASSIGNED"
     IN_PROGRESS = "IN_PROGRESS"
@@ -33,11 +36,11 @@ class Complaint(Base):
     priority = Column(String, default=ComplaintPriority.MEDIUM, nullable=False)
     status = Column(String, default=ComplaintStatus.NEW, nullable=False)
     anonymous = Column(Boolean, default=False, nullable=False)
-    
+
     # Feedback fields
     feedback_rating = Column(Integer, nullable=True)  # 1-5 stars
     feedback_comment = Column(Text, nullable=True)
-    
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     closed_at = Column(DateTime(timezone=True), nullable=True)
@@ -46,7 +49,7 @@ class Complaint(Base):
     student = relationship("User", foreign_keys=[student_id], back_populates="complaints")
     category = relationship("ComplaintCategory", back_populates="complaints")
     department = relationship("Department", back_populates="complaints")
-    
+
     files = relationship("ComplaintFile", back_populates="complaint", cascade="all, delete-orphan")
     comments = relationship("ComplaintComment", back_populates="complaint", cascade="all, delete-orphan")
     history = relationship("ComplaintHistory", back_populates="complaint", cascade="all, delete-orphan")
